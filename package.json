@@ -1,0 +1,26 @@
+{
+  "name": "tactical-walkie-talkie",
+  "version": "3.0.0",
+  "description": "Tactical WebRTC walkie-talkie with accounts and a user dashboard. Run the base server on one device for offline Wi-Fi use, or deploy it for online use.",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node init && node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "selfsigned": "^2.4.1",
+    "ws": "^8.18.0"
+  },
+  "keywords": [
+    "webrtc",
+    "walkie-talkie",
+    "realtime-audio",
+    "lan"
+  ],
+  "author": "",
+  "license": "MIT"
+}
