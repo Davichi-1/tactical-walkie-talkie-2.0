@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Comms-Hub X | Tactical Walkie-Talkie</title>
+<style>
+    :root {
+        --bg: #0b0d0e; --panel: #1a1f24; --panel2: #121517; --border: #2a323d;
+        --accent: #22c55e; --amber: #f59e0b; --red: #ef4444; --lcd: #34d399;
+        --text: #e5e7eb; --mut: #9ca3af;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        --display: "Arial Black", Impact, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; }
+    body {
+        background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+        padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
+        user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+    }
+    input, select, button { font: inherit; color: inherit; }
+    input, select { user-select: text; -webkit-user-select: text; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+    .wrap { width: 100%; max-width: 28rem; }
+
+    header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    h1 { margin: 0; font: 800 17px var(--display); letter-spacing: .06em; display: flex; align-items: center; gap: 8px; }
+    .tag { font: 10px var(--mono); color: var(--accent); border: 1px solid rgba(34,197,94,.4); background: rgba(34,197,94,.1); padding: 1px 6px; border-radius: 4px; }
+    .linkbtn { font: 12px var(--mono); color: var(--mut); background: var(--panel); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; }
+    .linkbtn:hover { color: var(--accent); }
+
+    main { width: 100%; max-width: 28rem; margin: 52px auto 12px; }
+    .panel { position: relative; background: var(--panel); border: 2px solid var(--border); border-radius: 24px; padding: 16px; box-shadow: 0 20px 40px rgba(0,0,0,.5); }
+    .antenna { position: absolute; top: -44px; left: 32px; width: 16px; height: 44px; background: linear-gradient(90deg, #374151, #111827, #1f2937); border: 1px solid #4b5563; border-bottom: 0; border-radius: 4px 4px 0 0; }
+
+    .bar { display: flex; align-items: center; justify-content: space-between; background: var(--panel2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; margin-bottom: 14px; }
+    .leds { display: flex; gap: 14px; }
+    .ledbox { text-align: center; font: 9px var(--mono); color: var(--mut); }
+    .led { width: 12px; height: 12px; border-radius: 50%; margin: 0 auto 4px; }
+    .led-off { background: #27272a; box-shadow: inset 0 1px 3px rgba(0,0,0,.8); }
+    .led-green { background: var(--accent); box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent); }
+    .led-red { background: var(--red); box-shadow: 0 0 10px var(--red), 0 0 20px var(--red); }
+    .led-amber { background: var(--amber); box-shadow: 0 0 10px var(--amber), 0 0 20px var(--amber); }
+    .chsel { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font: 12px var(--mono); color: var(--mut); }
+    select { background: var(--panel2); color: var(--accent); font: 700 15px var(--mono); border: 0; outline: 0; cursor: pointer; }
+
+    .lcd { background: #0d1a12; border: 2px solid #1f3827; border-radius: 12px; padding: 12px; margin-bottom: 14px; font-family: var(--mono); position: relative; overflow: hidden; box-shadow: inset 0 0 12px rgba(0,0,0,.9), 0 0 5px rgba(52,211,153,.2); }
+    .lcd::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: .6; background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,.25) 50%); background-size: 100% 4px; }
+    .lcd-top { display: flex; justify-content: space-between; font-size: 12px; color: rgba(5,150,105,.85); border-bottom: 1px solid rgba(6,78,59,.5); padding-bottom: 4px; margin-bottom: 6px; }
+    .lcd-mid { display: flex; justify-content: space-between; align-items: center; }
+    .lcd small { display: block; font-size: 10px; color: rgba(5,150,105,.75); letter-spacing: .1em; }
+    #freqDisplay { font: 800 24px var(--display); color: var(--lcd); letter-spacing: .04em; }
+    #freqDisplay span { font-size: 12px; }
+    #statusDisplay { font-size: 12px; font-weight: 700; text-align: right; }
+    .c-amber { color: #fbbf24; } .c-green { color: var(--lcd); } .c-red { color: #f87171; }
+    .scope { position: relative; height: 40px; margin-top: 10px; background: rgba(0,0,0,.4); border: 1px solid rgba(6,78,59,.6); border-radius: 4px; overflow: hidden; }
+    .scope canvas { width: 100%; height: 100%; display: block; }
+    #activeSpeakerText { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 11px var(--mono); color: var(--lcd); background: rgba(0,0,0,.55); }
+
+    .warn { margin-bottom: 12px; padding: 8px; font: 11px/1.4 var(--mono); color: #fcd34d; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.4); border-radius: 8px; }
+    .box { background: var(--panel2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 8px; display: grid; gap: 10px; }
+    .inputs { display: flex; gap: 8px; }
+    .inputs input { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font: 12px var(--mono); outline: 0; min-width: 0; }
+    .inputs input:focus { border-color: var(--accent); }
+    #usernameInput { flex: 1; } #roomIdInput { width: 7rem; text-transform: uppercase; }
+    .hint { font: 10px var(--mono); color: #6b7280; }
+    .hint b { color: var(--mut); }
+    .btn { width: 100%; border: 0; border-radius: 8px; padding: 9px; font: 700 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .btn-go { background: var(--accent); color: #052e16; } .btn-go:hover { background: #16a34a; } .btn-go:disabled { opacity: .6; }
+    .btn-stop { background: var(--red); color: #fff; } .btn-stop:hover { background: #dc2626; }
+
+    .ptt-zone { margin: 26px 0 20px; text-align: center; }
+    .ptt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 160px; height: 160px; margin: 0 auto; border-radius: 50%; background: #047857; border: 4px solid #064e3b; color: #052e16; font: 800 19px/1.1 var(--display); letter-spacing: .1em; touch-action: none; box-shadow: 0 8px 0 #15803d, 0 12px 20px rgba(0,0,0,.6); transition: all .05s ease; }
+    .ptt:disabled { opacity: .5; cursor: not-allowed; }
+    .ptt.active, .ptt:active:not(:disabled) { transform: translateY(6px); background: var(--accent); box-shadow: 0 2px 0 #15803d, 0 4px 10px rgba(0,0,0,.4); }
+    .ptt svg { margin-bottom: 4px; }
+    .ptt-hint { margin-top: 14px; font: 10px var(--mono); color: var(--mut); }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 10px; border-top: 1px solid var(--border); font: 12px var(--mono); }
+    .cell { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+    .cell .row { display: flex; justify-content: space-between; align-items: center; color: var(--mut); margin-bottom: 4px; }
+    .cell input[type=range] { width: 100%; accent-color: var(--accent); }
+    #staticToggleBtn { background: rgba(34,197,94,.2); border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 2px 8px; font: 700 10px var(--mono); }
+    #staticToggleBtn.off { opacity: .5; }
+
+    .squad { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .squad-head { display: flex; justify-content: space-between; align-items: center; font: 12px var(--mono); color: var(--mut); margin-bottom: 8px; }
+    .squad-head .right { display: flex; gap: 6px; align-items: center; }
+    .chip { font: 10px var(--mono); padding: 2px 6px; background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); }
+    #inviteBtn { color: #d1d5db; } #inviteBtn:hover { color: var(--accent); }
+    #peerList { display: flex; flex-wrap: wrap; gap: 6px; max-height: 96px; overflow-y: auto; }
+    .pill { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; font: 10px var(--mono); color: var(--mut); }
+    .pill.same { border-color: rgba(34,197,94,.4); color: #34d399; }
+    .pill i { width: 6px; height: 6px; border-radius: 50%; background: #4b5563; }
+    .pill.same i { background: #34d399; }
+    .pill.talk i { background: var(--amber); animation: pulse 1s infinite; }
+    .pill.link i { background: var(--amber); opacity: .6; }
+    .empty { font: italic 11px var(--mono); color: #6b7280; }
+    @keyframes pulse { 50% { opacity: .35; } }
+    @media (prefers-reduced-motion: reduce) { .pill.talk i { animation: none; } }
+
+    footer { font: 10px var(--mono); color: #6b7280; text-align: center; padding: 4px 0; }
+    #audioSink { position: absolute; width: 1px; height: 1px; overflow: hidden; left: -9999px; }
+    #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; max-width: 90vw; padding: 8px 16px; font: 12px var(--mono); color: var(--accent); background: var(--panel); border: 1px solid rgba(34,197,94,.5); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.6); opacity: 0; pointer-events: none; transition: opacity .3s; }
+    #toast.show { opacity: 1; }
+
+    #infoModal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; max-width: 28rem; width: 100%; padding: 18px; font-size: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.7); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px; }
+    .modal h3 { margin: 0; font: 800 14px var(--display); color: var(--accent); }
+    .modal-body { max-height: 20rem; overflow-y: auto; color: #d1d5db; }
+    .modal-body p { margin: 10px 0 4px; font-weight: 700; }
+    .modal-body ul { margin: 0; padding-left: 18px; color: var(--mut); display: grid; gap: 4px; }
+    .modal .x { background: none; border: 0; font-size: 18px; color: var(--mut); }
+    .modal .btn { margin-top: 12px; }
+    header { gap: 8px; flex-wrap: wrap; }
+    .head-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    #userBar { display: flex; align-items: center; gap: 6px; font: 11px var(--mono); color: var(--mut); }
+    #userLabel { max-width: 6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--lcd); }
+    .lcd-title { font: 800 20px var(--display); color: var(--lcd); letter-spacing: .04em; margin-top: 6px; }
+    .field { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; font: 13px var(--mono); outline: 0; }
+    .field:focus { border-color: var(--accent); }
+    .auth-error { min-height: 1.3em; font: 11px var(--mono); color: #f87171; }
+    #authToggle { width: 100%; text-align: center; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+    <h1>COMMS-HUB <span class="tag">X-10</span></h1>
+    <div class="head-right">
+        <div id="userBar" class="hidden"><span id="userLabel"></span><button id="logoutBtn" class="linkbtn">Sign out</button></div>
+        <button id="infoBtn" class="linkbtn">Setup guide</button>
+    </div>
+</header>
+
+<main id="authView" class="hidden">
+    <div class="panel">
+        <div class="antenna"></div>
+        <div class="lcd">
+            <div class="lcd-top"><span>COMMS-HUB X-10</span><span>ACCESS</span></div>
+            <div id="authTitle" class="lcd-title">Sign in</div>
+        </div>
+        <form id="authForm" class="box" novalidate>
+            <div id="callsignRow" class="hidden">
+                <input id="authCallsign" class="field" type="text" placeholder="Callsign (e.g. Eagle-1)" maxlength="12" autocomplete="nickname">
+            </div>
+            <input id="authEmail" class="field" type="email" placeholder="Email" autocomplete="email" inputmode="email" autocapitalize="off" required>
+            <input id="authPassword" class="field" type="password" placeholder="Password (8+ characters)" autocomplete="current-password" required>
+            <div id="authError" class="auth-error" role="alert"></div>
+            <button id="authSubmit" class="btn btn-go" type="submit">Sign in</button>
+            <button id="authToggle" class="linkbtn" type="button">New here? Create an account</button>
+        </form>
+    </div>
+</main>
+
+<main id="radioView" class="hidden">
+    <div class="panel">
+        <div class="antenna"></div>
+
+        <div class="bar">
+            <div class="leds">
+                <div class="ledbox"><div id="ledPower" class="led led-off"></div>PWR</div>
+                <div class="ledbox"><div id="ledRx" class="led led-off"></div>RX</div>
+                <div class="ledbox"><div id="ledTx" class="led led-off"></div>TX</div>
+            </div>
+            <div class="chsel">
+                <label for="channelSelect">CH</label>
+                <select id="channelSelect">
+                    <option value="1">01 Alpha</option><option value="2">02 Bravo</option>
+                    <option value="3">03 Charlie</option><option value="4">04 Delta</option>
+                    <option value="5">05 Echo</option><option value="6">06 Foxtrot</option>
+                    <option value="7">07 Golf</option><option value="8">08 Hotel</option>
+                    <option value="9">09 India</option><option value="10">10 Kilo</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="lcd">
+            <div class="lcd-top">
+                <span id="roomDisplay">NET: DISCONNECTED</span>
+                <span><span id="peerCount">0</span>/10 units</span>
+            </div>
+            <div class="lcd-mid">
+                <div><small>FREQUENCY</small><div id="freqDisplay">462.562 <span>MHz</span></div></div>
+                <div><small>STATUS</small><div id="statusDisplay" class="c-amber">OFFLINE</div></div>
+            </div>
+            <div class="scope">
+                <canvas id="visualizerCanvas"></canvas>
+                <div id="activeSpeakerText" class="hidden"></div>
+            </div>
+        </div>
+
+        <div id="secureWarn" class="warn hidden">
+            The microphone needs a secure page. Open the <b>https://</b> address printed by the base server and accept the certificate warning once.
+        </div>
+
+        <div class="box">
+            <div class="inputs">
+                <input type="text" id="usernameInput" placeholder="Callsign (e.g. Eagle-1)" maxlength="12" autocomplete="off">
+                <input type="text" id="roomIdInput" placeholder="Room ID" maxlength="10" autocomplete="off" autocapitalize="characters">
+            </div>
+            <div class="hint">Every device needs the <b>same Room ID</b>. Use Invite to share it.</div>
+            <button id="connectBtn" class="btn btn-go">Connect unit</button>
+            <button id="disconnectBtn" class="btn btn-stop hidden">Disconnect</button>
+        </div>
+
+        <div class="ptt-zone">
+            <button id="pttBtn" class="ptt" disabled>
+                <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+                <span>PUSH TO</span><span style="font-size:14px">TALK</span>
+            </button>
+            <div class="ptt-hint">Hold the button (or the spacebar) to talk. Release to listen.</div>
+        </div>
+
+        <div class="grid2">
+            <div class="cell">
+                <div class="row"><span>Volume</span><span id="volVal">100%</span></div>
+                <input type="range" id="volumeSlider" min="0" max="100" value="100" aria-label="Volume">
+            </div>
+            <div class="cell">
+                <div class="row" style="margin:0;height:100%"><span>Radio noise</span><button id="staticToggleBtn">ON</button></div>
+            </div>
+        </div>
+
+        <div class="squad">
+            <div class="squad-head">
+                <span>Units in net (<span id="squadCount">0</span>)</span>
+                <div class="right">
+                    <button id="inviteBtn" class="chip">Invite</button>
+                    <span id="channelNameBadge" class="chip">CH 01</span>
+                </div>
+            </div>
+            <div id="peerList"></div>
+        </div>
+    </div>
+</main>
+
+<footer id="serverInfo" class="wrap"></footer>
+
+<div id="audioSink" aria-hidden="true"></div>
+<div id="toast" role="status"></div>
+
+<div id="infoModal" class="hidden">
+    <div class="modal">
+        <div class="modal-head"><h3>Setup guide</h3><button id="closeInfoBtn" class="x" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+            <p>Offline, on the same Wi-Fi or hotspot</p>
+            <ul>
+                <li>On one computer run <b>npm start</b>. It prints an https:// address and a QR code.</li>
+                <li>Open that address on every phone and laptop. Accept the certificate warning once (Advanced, then Proceed).</li>
+                <li>Use the same Room ID on all devices, or tap Invite.</li>
+                <li>Tap Connect unit and allow the microphone.</li>
+            </ul>
+            <p>Online</p>
+            <ul><li>Deploy the same server to a Node host and open its https:// address on every device. Nothing else changes.</li></ul>
+            <p>Talking</p>
+            <ul>
+                <li>You only hear units on the same channel (01 to 10).</li>
+                <li>A unit marked LINKING has not finished connecting. If it stays that way, the router may block devices from talking to each other.</li>
+                <li>Use headphones to avoid feedback. Keep the screen on and the page open.</li>
+            </ul>
+        </div>
+        <button id="dismissInfoBtn" class="btn btn-go">Got it</button>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+const CHANNEL_FREQUENCIES = {
+    1: '462.562', 2: '462.587', 3: '462.612', 4: '462.637', 5: '462.662',
+    6: '462.687', 7: '462.712', 8: '467.562', 9: '467.587', 10: '467.612'
+};
+
+/* ---------- helpers ---------- */
+const pad2 = n => String(n).padStart(2, '0');
+const clampCh = n => Math.min(10, Math.max(1, parseInt(n, 10) || 1));
+const cleanText = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
+const sanitizeRoom = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10);
+const randomRoom = () => Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+const setLed = (el, c) => { el.classList.remove('led-off', 'led-green', 'led-red', 'led-amber'); el.classList.add('led-' + c); };
+const hashRoom = () => { try { return sanitizeRoom(decodeURIComponent(location.hash.slice(1))); } catch { return ''; } };
+
+/* ---------- radio sounds ---------- */
+class RadioSoundEngine {
+    constructor() { this.ctx = null; this.staticNode = null; this.enableStatic = true; }
+
+    init() {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+
+    noiseBuffer(seconds) {
+        const len = Math.floor(this.ctx.sampleRate * seconds);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const out = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) out[i] = Math.random() * 2 - 1;
+        return buf;
+    }
+
+    playSquelch(isStart = true) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer(isStart ? 0.08 : 0.12);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(isStart ? 1200 : 800, now);
+        filter.Q.setValueAtTime(3, now);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + (isStart ? 0.07 : 0.11));
+        src.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+        src.start(now);
+        if (isStart) {
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, now);
+            g.gain.setValueAtTime(0.08, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.connect(g); g.connect(this.ctx.destination);
+            osc.start(now); osc.stop(now + 0.05);
+        }
+    }
+
+    startBackgroundStatic() {
+        if (!this.ctx || !this.enableStatic || this.staticNode) return;
+        const node = this.ctx.createBufferSource();
+        node.buffer = this.noiseBuffer(2);
+        node.loop = true;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass'; filter.frequency.value = 1500; filter.Q.value = 1.5;
+        const gain = this.ctx.createGain();
+        gain.gain.value = 0.015;
+        node.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+        node.start();
+        this.staticNode = node;
+    }
+
+    stopBackgroundStatic() {
+        if (!this.staticNode) return;
+        try { this.staticNode.stop(); this.staticNode.disconnect(); } catch {}
+        this.staticNode = null;
+    }
+}
+
+/* ---------- app ----------
+   The base server keeps the room roster and relays WebRTC setup messages.
+   Voice goes straight between devices. Each new unit calls every unit already in the room. */
+class WalkieTalkieApp {
+    constructor() {
+        this.sound = new RadioSoundEngine();
+        this.state = 'off';                 // off | connecting | online
+        this.ws = null; this.myId = null; this.ice = [];
+        this.peers = new Map();             // id -> { id, callsign, channel, talking, pc, initiator, queue, audioEl, src, stream }
+        this.callsign = ''; this.room = ''; this.channel = 1;
+        this.localStream = null;
+        this.isTransmitting = false;
+        this.rxCount = 0; this.rxNames = '';
+        this.signalLost = false;
+        this.timers = { open: null, retry: null, toast: null };
+        this.wakeLock = null;
+        this.txAnalyser = null; this.rxAnalyser = null; this.txSrc = null; this.silent = null;
+
+        const ids = ['connectBtn', 'disconnectBtn', 'usernameInput', 'roomIdInput', 'pttBtn', 'channelSelect',
+            'ledPower', 'ledRx', 'ledTx', 'statusDisplay', 'freqDisplay', 'roomDisplay', 'peerCount', 'volumeSlider',
+            'volVal', 'staticToggleBtn', 'peerList', 'squadCount', 'channelNameBadge', 'visualizerCanvas',
+            'activeSpeakerText', 'infoBtn', 'infoModal', 'closeInfoBtn', 'dismissInfoBtn', 'inviteBtn',
+            'audioSink', 'toast', 'secureWarn', 'serverInfo',
+            'authView', 'radioView', 'authForm', 'authTitle', 'authEmail', 'authPassword', 'authCallsign',
+            'callsignRow', 'authError', 'authSubmit', 'authToggle', 'userBar', 'userLabel', 'logoutBtn'];
+        this.dom = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+        this.initEvents();
+        this.initVisualizer();
+        this.syncNet();
+        this.initAuth();
+    }
+
+    /* ---------- accounts ---------- */
+    async initAuth() {
+        const d = this.dom;
+        this.user = null; this.authMode = 'login';
+        d.authToggle.addEventListener('click', () => this.setAuthMode(this.authMode === 'login' ? 'signup' : 'login'));
+        d.authForm.addEventListener('submit', e => { e.preventDefault(); this.submitAuth(); });
+        d.logoutBtn.addEventListener('click', () => this.logout());
+        try {
+            const cfg = await (await fetch('/api/config')).json();
+            if (!cfg.auth) return this.showRadio(null);               // server runs with accounts off
+            const r = await fetch('/api/me');
+            if (r.ok) this.showRadio((await r.json()).user); else this.showAuth('login');
+        } catch { this.showRadio(null); }                             // opened as a plain file: no server, no accounts
+    }
+
+    setAuthMode(mode) {
+        const d = this.dom, signup = mode === 'signup';
+        this.authMode = mode;
+        d.authTitle.textContent = signup ? 'Create your account' : 'Sign in';
+        d.authSubmit.textContent = signup ? 'Create account' : 'Sign in';
+        d.authToggle.textContent = signup ? 'Already have an account? Sign in' : 'New here? Create an account';
+        d.callsignRow.classList.toggle('hidden', !signup);
+        d.authPassword.autocomplete = signup ? 'new-password' : 'current-password';
+        d.authError.textContent = '';
+    }
+
+    showAuth(mode) {
+        this.setAuthMode(mode || 'login');
+        this.dom.radioView.classList.add('hidden');
+        this.dom.authView.classList.remove('hidden');
+        this.dom.userBar.classList.add('hidden');
+    }
+
+    showRadio(user) {
+        const d = this.dom;
+        this.user = user;
+        d.authView.classList.add('hidden');
+        d.radioView.classList.remove('hidden');
+        d.userBar.classList.toggle('hidden', !user);
+        if (user) {
+            let saved = '';
+            try { saved = localStorage.getItem('cmhx_callsign') || ''; } catch {}
+            d.userLabel.textContent = user.callsign;
+            d.usernameInput.value = saved || user.callsign;
+        }
+    }
+
+    async submitAuth() {
+        const d = this.dom, signup = this.authMode === 'signup';
+        d.authError.textContent = '';
+        d.authSubmit.disabled = true;
+        try {
+            const r = await fetch(signup ? '/api/signup' : '/api/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: d.authEmail.value, password: d.authPassword.value, callsign: d.authCallsign.value })
+            });
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) { d.authError.textContent = data.error || 'Something went wrong. Try again.'; return; }
+            d.authPassword.value = '';
+            this.showRadio(data.user);
+        } catch { d.authError.textContent = 'Cannot reach the server. Is it running?'; }
+        finally { d.authSubmit.disabled = false; }
+    }
+
+    async logout() {
+        if (this.state !== 'off') this.teardown();
+        try { await fetch('/api/logout', { method: 'POST' }); } catch {}
+        try { localStorage.removeItem('cmhx_callsign'); } catch {}
+        this.showAuth('login');
+    }
+
+    /* ---------- UI ---------- */
+    initEvents() {
+        const d = this.dom;
+        let saved = '';
+        try { saved = localStorage.getItem('cmhx_callsign') || ''; } catch {}
+        d.usernameInput.value = saved || 'Unit-' + Math.floor(100 + Math.random() * 900);
+        d.roomIdInput.value = (hashRoom().length >= 3 ? hashRoom() : randomRoom()).toUpperCase();
+        d.roomIdInput.addEventListener('input', () => { d.roomIdInput.value = sanitizeRoom(d.roomIdInput.value).toUpperCase(); });
+
+        const lan = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
+        d.serverInfo.textContent = location.protocol === 'file:'
+            ? 'Not served yet. Run npm start and open the address it prints.'
+            : `Base: ${location.host} (${lan ? 'local network, works offline' : 'online'})`;
+        if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) d.secureWarn.classList.remove('hidden');
+
+        d.connectBtn.addEventListener('click', e => { e.currentTarget.blur(); this.connectUnit(); });
+        d.disconnectBtn.addEventListener('click', e => { e.currentTarget.blur(); this.teardown(); });
+        d.inviteBtn.addEventListener('click', () => this.invite());
+        d.channelSelect.addEventListener('change', e => this.onChannelChange(e));
+        this.channel = clampCh(d.channelSelect.value);
+
+        // Push to talk: pointer events cover mouse, touch and pen; capture keeps it held if a finger slides off
+        const ptt = d.pttBtn;
+        ptt.addEventListener('pointerdown', e => { e.preventDefault(); try { ptt.setPointerCapture(e.pointerId); } catch {} this.startTx(); });
+        ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => ptt.addEventListener(ev, e => { e.preventDefault(); this.stopTx(); }));
+        ptt.addEventListener('contextmenu', e => e.preventDefault());
+
+        const typing = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
+        window.addEventListener('keydown', e => { if (e.code !== 'Space' || e.repeat || typing()) return; e.preventDefault(); this.startTx(); });
+        window.addEventListener('keyup', e => { if (e.code !== 'Space' || typing()) return; e.preventDefault(); this.stopTx(); });
+
+        // never leave the mic open by accident
+        window.addEventListener('blur', () => this.stopTx());
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') { this.stopTx(); return; }
+            if (this.state !== 'online') return;
+            const track = this.localStream && this.localStream.getAudioTracks()[0];
+            if (!track || track.readyState === 'ended') this.teardown('The browser stopped the mic in the background. Tap Connect unit to rejoin.');
+            else this.lockScreen();
+        });
+        window.addEventListener('pagehide', () => { if (this.state !== 'off') this.teardown(); });
+
+        d.volumeSlider.addEventListener('input', e => {
+            d.volVal.textContent = `${e.target.value}%`;
+            this.peers.forEach(p => { if (p.audioEl) p.audioEl.volume = e.target.value / 100; });
+        });
+        d.staticToggleBtn.addEventListener('click', () => {
+            this.sound.enableStatic = !this.sound.enableStatic;
+            d.staticToggleBtn.textContent = this.sound.enableStatic ? 'ON' : 'OFF';
+            d.staticToggleBtn.classList.toggle('off', !this.sound.enableStatic);
+            if (!this.sound.enableStatic) this.sound.stopBackgroundStatic();
+            else if (this.state === 'online') this.sound.startBackgroundStatic();
+        });
+
+        const modal = show => d.infoModal.classList.toggle('hidden', !show);
+        d.infoBtn.addEventListener('click', () => modal(true));
+        d.closeInfoBtn.addEventListener('click', () => modal(false));
+        d.dismissInfoBtn.addEventListener('click', () => modal(false));
+    }
+
+    toast(msg) {
+        const el = this.dom.toast;
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(this.timers.toast);
+        this.timers.toast = setTimeout(() => el.classList.remove('show'), 4500);
+    }
+
+    async invite() {
+        const room = sanitizeRoom(this.dom.roomIdInput.value);
+        if (room.length < 3) return this.toast('Enter a Room ID first');
+        const url = location.href.split('#')[0] + '#' + room;
+        try {
+            if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+                await navigator.share({ title: 'Comms-Hub X', text: `Join my net ${room.toUpperCase()}`, url });
+                return;
+            }
+        } catch (e) { if (e.name === 'AbortError') return; }
+        try { await navigator.clipboard.writeText(url); this.toast('Invite link copied'); }
+        catch { prompt('Copy this invite link:', url); }
+    }
+
+    onChannelChange(e) {
+        if (this.isTransmitting) this.stopTx();
+        this.channel = clampCh(e.target.value);
+        this.dom.freqDisplay.innerHTML = `${CHANNEL_FREQUENCIES[this.channel]} <span>MHz</span>`;
+        this.dom.channelNameBadge.textContent = `CH ${pad2(this.channel)}`;
+        e.target.blur();
+        this.peers.forEach(p => this.applyGate(p));
+        this.wsSend({ t: 'state', channel: this.channel, talking: false });
+        this.syncNet();
+    }
+
+    /* ---------- connect / disconnect ---------- */
+    async connectUnit() {
+        if (this.state !== 'off') return;
+        const d = this.dom;
+        this.callsign = cleanText(d.usernameInput.value, 12) || 'Unit-' + Math.floor(100 + Math.random() * 900);
+        this.room = sanitizeRoom(d.roomIdInput.value);
+        if (this.room.length < 3) return this.toast('Room ID needs at least 3 letters or numbers');
+        if (location.protocol === 'file:') return this.toast('Open this page from the base server: run npm start, then use the address it prints.');
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            d.secureWarn.classList.remove('hidden');
+            return this.toast('Mic unavailable. Open the https:// address from the base server.');
+        }
+        d.roomIdInput.value = this.room.toUpperCase();
+        try { localStorage.setItem('cmhx_callsign', this.callsign); } catch {}
+        this.channel = clampCh(d.channelSelect.value);
+
+        this.sound.init();
+        this.state = 'connecting';
+        d.connectBtn.disabled = true;
+        this.refreshStatus();
+
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false
+            });
+        } catch (err) {
+            this.state = 'off';
+            d.connectBtn.disabled = false;
+            this.refreshStatus();
+            return this.toast(err.name === 'NotAllowedError' ? 'Microphone blocked. Allow mic access and try again.'
+                : err.name === 'NotFoundError' ? 'No microphone found on this device.' : 'Could not open the microphone.');
+        }
+        this.localStream.getAudioTracks()[0].enabled = false;     // muted until push to talk
+        this.buildMeters();
+
+        this.timers.open = setTimeout(() => {
+            if (this.state === 'connecting') this.teardown('Could not reach the base server. Is it running, and are you on the same Wi-Fi?');
+        }, 10000);
+        this.openSocket();
+    }
+
+    openSocket() {
+        const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+        this.ws = ws;
+        ws.onopen = () => ws.send(JSON.stringify({ t: 'join', room: this.room, callsign: this.callsign, channel: this.channel }));
+        ws.onmessage = e => {
+            if (this.ws !== ws) return;
+            let m; try { m = JSON.parse(e.data); } catch { return; }
+            this.onSocket(m);
+        };
+        ws.onclose = () => {
+            if (this.ws !== ws) return;
+            if (this.state === 'connecting') return this.teardown('Could not reach the base server. Is it running, and are you on the same Wi-Fi?');
+            if (this.state !== 'online') return;
+            this.signalLost = true;                 // keep the screen, try to rejoin
+            this.stopTx(); this.closeAllPeers(); this.syncNet();
+            this.timers.retry = setTimeout(() => { if (this.state === 'online') this.openSocket(); }, 2000);
+        };
+    }
+
+    wsSend(obj) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(obj)); }
+    sendSignal(to, data) { this.wsSend({ t: 'signal', to, data }); }
+
+    onSocket(m) {
+        switch (m.t) {
+            case 'joined':
+                clearTimeout(this.timers.open);
+                this.myId = m.id;
+                this.ice = Array.isArray(m.ice) ? m.ice : [];
+                this.closeAllPeers();
+                (m.peers || []).forEach(p => this.addPeer(p, true));      // I am the newcomer, so I call everyone already here
+                if (this.state === 'connecting') this.goOnline();
+                else { this.signalLost = false; this.syncNet(); }
+                break;
+            case 'auth': this.teardown('Session expired. Please sign in again.'); this.showAuth('login'); break;
+            case 'full': this.teardown('Room is full (10 of 10). Try another Room ID.'); break;
+            case 'error': this.teardown(m.msg || 'Server refused the connection.'); break;
+            case 'peer-join': this.addPeer(m.peer, false); break;           // they will call me
+            case 'peer-leave': this.removePeer(m.id); break;
+            case 'state': {
+                const p = this.peers.get(m.id);
+                if (!p) break;
+                p.channel = clampCh(m.channel); p.talking = !!m.talking;
+                this.applyGate(p); this.syncNet();
+                break;
+            }
+            case 'signal': this.handleSignal(m.from, m.data); break;
+        }
+    }
+
+    goOnline() {
+        const d = this.dom;
+        this.state = 'online';
+        setLed(d.ledPower, 'green');
+        d.roomDisplay.textContent = `NET: ${this.room.toUpperCase()}`;
+        d.connectBtn.classList.add('hidden');
+        d.disconnectBtn.classList.remove('hidden');
+        d.pttBtn.disabled = false;
+        this.sound.startBackgroundStatic();
+        this.lockScreen();
+        this.syncNet();
+    }
+
+    teardown(msg) {
+        const wasOnline = this.state === 'online';
+        this.stopTx();
+        clearTimeout(this.timers.open); clearTimeout(this.timers.retry);
+        const ws = this.ws; this.ws = null;
+        if (ws) { try { ws.close(); } catch {} }
+        this.closeAllPeers();
+
+        [this.txSrc, this.txAnalyser, this.rxAnalyser, this.silent].forEach(n => { try { n && n.disconnect(); } catch {} });
+        this.txSrc = this.txAnalyser = this.rxAnalyser = this.silent = null;
+        if (this.localStream) this.localStream.getTracks().forEach(t => t.stop());
+        this.localStream = null;
+
+        this.sound.stopBackgroundStatic();
+        if (wasOnline) this.sound.playSquelch(false);
+        if (this.wakeLock) { try { this.wakeLock.release(); } catch {} this.wakeLock = null; }
+
+        this.state = 'off'; this.signalLost = false; this.myId = null; this.rxCount = 0; this.rxNames = '';
+
+        const d = this.dom;
+        [d.ledPower, d.ledRx, d.ledTx].forEach(l => setLed(l, 'off'));
+        d.roomDisplay.textContent = 'NET: DISCONNECTED';
+        d.connectBtn.disabled = false;
+        d.connectBtn.classList.remove('hidden');
+        d.disconnectBtn.classList.add('hidden');
+        d.pttBtn.disabled = true;
+        this.syncNet();
+        if (msg) this.toast(msg);
+    }
+
+    async lockScreen() {
+        try {
+            if ('wakeLock' in navigator && !this.wakeLock) {
+                this.wakeLock = await navigator.wakeLock.request('screen');
+                this.wakeLock.addEventListener('release', () => { this.wakeLock = null; });
+            }
+        } catch {}
+    }
+
+    /* ---------- WebRTC links ---------- */
+    addPeer(info, initiator) {
+        if (!info || this.peers.has(info.id)) return;
+        const p = {
+            id: info.id, callsign: cleanText(info.callsign, 12) || 'UNIT', channel: clampCh(info.channel), talking: !!info.talking,
+            pc: null, initiator, queue: [], audioEl: null, src: null, stream: null
+        };
+        this.peers.set(p.id, p);
+        p.pc = this.makePc(p);
+        if (initiator) this.offer(p, false);
+        this.syncNet();
+    }
+
+    removePeer(id, silent) {
+        const p = this.peers.get(id);
+        if (!p) return;
+        this.peers.delete(id);
+        try { p.pc.close(); } catch {}
+        this.detachAudio(p);
+        if (!silent) this.syncNet();
+    }
+
+    closeAllPeers() {
+        [...this.peers.keys()].forEach(id => this.removePeer(id, true));
+        this.syncNet();
+    }
+
+    makePc(p) {
+        const pc = new RTCPeerConnection({ iceServers: this.ice });
+        this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
+        pc.onicecandidate = e => { if (e.candidate) this.sendSignal(p.id, { c: e.candidate }); };
+        pc.ontrack = e => { if (this.peers.get(p.id) === p) this.attachAudio(p, e.streams[0] || new MediaStream([e.track])); };
+        pc.onconnectionstatechange = () => {
+            if (this.peers.get(p.id) !== p) return;
+            if (pc.connectionState === 'failed' && p.initiator) this.offer(p, true);   // try a fresh path
+            this.syncNet();
+        };
+        return pc;
+    }
+
+    async offer(p, restart) {
+        try {
+            const o = await p.pc.createOffer({ iceRestart: !!restart });
+            await p.pc.setLocalDescription(o);
+            this.sendSignal(p.id, { d: p.pc.localDescription });
+        } catch (err) { console.warn('offer failed', err); }
+    }
+
+    async handleSignal(from, data) {
+        const p = this.peers.get(from);
+        if (!p || !data) return;
+        try {
+            if (data.d) {
+                await p.pc.setRemoteDescription(data.d);
+                for (const c of p.queue.splice(0)) await p.pc.addIceCandidate(c);
+                if (data.d.type === 'offer') {
+                    const a = await p.pc.createAnswer();
+                    await p.pc.setLocalDescription(a);
+                    this.sendSignal(from, { d: p.pc.localDescription });
+                }
+            } else if (data.c) {
+                if (p.pc.remoteDescription) await p.pc.addIceCandidate(data.c);
+                else p.queue.push(data.c);
+            }
+        } catch (err) { console.warn('signal failed', err); }
+    }
+
+    attachAudio(p, stream) {
+        if (p.stream === stream) return;
+        p.stream = stream;
+        if (!p.audioEl) {
+            const a = document.createElement('audio');
+            a.autoplay = true; a.playsInline = true;
+            this.dom.audioSink.appendChild(a);
+            p.audioEl = a;
+        }
+        p.audioEl.srcObject = stream;
+        p.audioEl.volume = this.dom.volumeSlider.value / 100;
+        const pr = p.audioEl.play(); if (pr && pr.catch) pr.catch(() => {});
+        if (this.sound.ctx && this.rxAnalyser) {              // level meter only; the <audio> element does the playing
+            try { p.src && p.src.disconnect(); p.src = this.sound.ctx.createMediaStreamSource(stream); p.src.connect(this.rxAnalyser); } catch {}
+        }
+        this.applyGate(p);
+    }
+
+    detachAudio(p) {
+        try { p.src && p.src.disconnect(); } catch {}
+        p.src = null; p.stream = null;
+        if (p.audioEl) { p.audioEl.srcObject = null; p.audioEl.remove(); p.audioEl = null; }
+    }
+
+    // you only hear units on your channel
+    applyGate(p) { if (p.audioEl) p.audioEl.muted = p.channel !== this.channel; }
+
+    /* ---------- transmit ---------- */
+    startTx() {
+        if (this.state !== 'online' || this.signalLost || this.isTransmitting || !this.localStream) return;
+        this.sound.init();
+        this.isTransmitting = true;
+        this.localStream.getAudioTracks()[0].enabled = true;
+        setLed(this.dom.ledTx, 'red');
+        this.dom.pttBtn.classList.add('active');
+        this.sound.playSquelch(true);
+        if (navigator.vibrate) navigator.vibrate(25);
+        this.wsSend({ t: 'state', channel: this.channel, talking: true });
+        this.refreshStatus();
+    }
+
+    stopTx() {
+        if (!this.isTransmitting) return;
+        this.isTransmitting = false;
+        if (this.localStream) this.localStream.getAudioTracks()[0].enabled = false;
+        setLed(this.dom.ledTx, 'off');
+        this.dom.pttBtn.classList.remove('active');
+        this.sound.playSquelch(false);
+        this.wsSend({ t: 'state', channel: this.channel, talking: false });
+        this.refreshStatus();
+    }
+
+    /* ---------- display ---------- */
+    syncNet() {
+        const members = [...this.peers.values()].sort((a, b) => a.callsign.localeCompare(b.callsign));
+        const talkers = members.filter(m => m.talking && m.channel === this.channel);
+
+        if (talkers.length && !this.rxCount) this.sound.playSquelch(true);
+        else if (!talkers.length && this.rxCount) this.sound.playSquelch(false);
+        this.rxCount = talkers.length;
+        this.rxNames = talkers.map(m => m.callsign.toUpperCase()).join(', ');
+        setLed(this.dom.ledRx, talkers.length ? 'amber' : 'off');
+
+        this.dom.squadCount.textContent = members.length;
+        this.dom.peerCount.textContent = this.state === 'online' ? members.length + 1 : 0;
+
+        const list = this.dom.peerList;
+        list.replaceChildren();
+        if (!members.length) {
+            const empty = document.createElement('div');
+            empty.className = 'empty';
+            empty.textContent = this.state === 'online'
+                ? 'No other units yet. Tap Invite and open the link on another device.'
+                : 'Not connected.';
+            list.appendChild(empty);
+        } else {
+            members.forEach(m => {
+                const same = m.channel === this.channel;
+                const linked = m.pc && m.pc.connectionState === 'connected';
+                const pill = document.createElement('div');
+                pill.className = 'pill' + (same ? ' same' : '') + (m.talking && same ? ' talk' : '') + (!linked ? ' link' : '');
+                const dot = document.createElement('i');
+                const name = document.createElement('span');
+                name.textContent = m.callsign.toUpperCase() + (same ? '' : ` CH${pad2(m.channel)}`) + (linked ? '' : ' LINKING');
+                pill.append(dot, name);
+                list.appendChild(pill);
+            });
+        }
+        this.refreshStatus();
+    }
+
+    refreshStatus() {
+        const { statusDisplay, activeSpeakerText } = this.dom;
+        let text, color, overlay = '';
+        if (this.state === 'off') { text = 'OFFLINE'; color = 'amber'; }
+        else if (this.state === 'connecting') { text = 'CONNECTING...'; color = 'amber'; }
+        else if (this.signalLost) { text = 'BASE LOST, REJOINING'; color = 'amber'; }
+        else if (this.isTransmitting) { text = 'TRANSMITTING'; color = 'red'; overlay = 'TRANSMITTING (TX)...'; }
+        else if (this.rxCount) { text = 'RECEIVING'; color = 'amber'; overlay = `RX: ${this.rxNames}`; }
+        else { text = 'ONLINE / STANDBY'; color = 'green'; }
+        statusDisplay.textContent = text;
+        statusDisplay.className = 'c-' + color;
+        activeSpeakerText.textContent = overlay;
+        activeSpeakerText.classList.toggle('hidden', !overlay);
+    }
+
+    /* ---------- level meters ---------- */
+    buildMeters() {
+        const ctx = this.sound.ctx;
+        this.silent = ctx.createGain();
+        this.silent.gain.value = 0;                          // keeps the analysers running without any audible output
+        this.silent.connect(ctx.destination);
+        this.txAnalyser = ctx.createAnalyser(); this.txAnalyser.fftSize = 256;
+        this.rxAnalyser = ctx.createAnalyser(); this.rxAnalyser.fftSize = 256;
+        this.txAnalyser.connect(this.silent);
+        this.rxAnalyser.connect(this.silent);
+        this.txSrc = ctx.createMediaStreamSource(this.localStream);
+        this.txSrc.connect(this.txAnalyser);
+    }
+
+    initVisualizer() {
+        const c = this.dom.visualizerCanvas, g = c.getContext('2d');
+        let buf = new Uint8Array(256);
+        const draw = () => {
+            requestAnimationFrame(draw);
+            const dpr = window.devicePixelRatio || 1;
+            const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+            if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+            g.clearRect(0, 0, w, h);
+            const an = this.isTransmitting ? this.txAnalyser : (this.rxCount ? this.rxAnalyser : null);
+            g.lineWidth = 1.5 * dpr;
+            g.strokeStyle = this.isTransmitting ? '#ef4444' : this.rxCount ? '#f59e0b' : '#34d399';
+            g.beginPath();
+            if (an) {
+                if (buf.length !== an.fftSize) buf = new Uint8Array(an.fftSize);
+                an.getByteTimeDomainData(buf);
+                const step = w / (buf.length - 1);
+                for (let i = 0; i < buf.length; i++) {
+                    const y = Math.max(1, Math.min(h - 1, h / 2 + ((buf[i] - 128) / 128) * h * 1.2));
+                    if (i) g.lineTo(i * step, y); else g.moveTo(0, y);
+                }
+            } else { g.moveTo(0, h / 2); g.lineTo(w, h / 2); }
+            g.stroke();
+        };
+        draw();
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => { window.walkieTalkie = new WalkieTalkieApp(); });
+</script>
+</body>
+</html>
